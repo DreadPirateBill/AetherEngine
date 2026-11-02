@@ -13,6 +13,15 @@ let package = Package(
     products: [
         .library(
             name: "AetherEngine",
+            // Sprocket fork (branch `sprocket`): the product is DYNAMIC so the engine's `avcodec_*` / `avformat_*`
+            // references are resolved when this framework links, against the AetherLib* frameworks, and recorded as
+            // coming from them. Linked statically into an app that also carries a static FFmpeg (MPVKit's Lib*
+            // xcframeworks are `ar` archives), the engine binds to that other FFmpeg instead — same majors, different
+            // codec and encoder set — which upstream's README (§ "One FFmpeg, and it has to be the engine's") names
+            // as the silent-defect class and whose documented remedy is exactly this: stop linking the engine into the
+            // executable. Upstream keeps the product static on purpose (App Store relink argument); the host embeds
+            // this framework with CodeSignOnCopy. The only change on this branch.
+            type: .dynamic,
             targets: ["AetherEngine"]
         ),
         .library(

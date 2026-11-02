@@ -24,6 +24,14 @@
 
 ---
 
+## This fork (DreadPirateBill/AetherEngine, branch `sprocket`)
+
+One change over upstream, in `Package.swift`: the `AetherEngine` library product is declared `type: .dynamic`, so a
+host that already links a *static* FFmpeg (Sprocket Player carries MPVKit's static `Lib*` archives beside VLCKit)
+gets the engine's `avcodec_*` calls bound to the `AetherLib*` frameworks rather than to the host's other FFmpeg
+(upstream README, "One FFmpeg, and it has to be the engine's"). Nothing else differs; the branch is rebased onto each
+upstream tag it tracks (currently `7.53.0`). Published under the same LGPL-3.0 + App Store exception as upstream.
+
 ## What it is
 
 A player engine that gets the hard parts right (HDR, Dolby Vision, Dolby Atmos, container coverage, codec coverage) and exposes a single `AetherPlayerView` (UIKit / AppKit) or `AetherPlayerSurface` (SwiftUI) plus a handful of `async` methods. No `AVPlayerViewController`. No opinionated controls. No analytics. Bind the view, call `play()`, read the published properties for state.
