@@ -7102,6 +7102,15 @@ public final class AetherEngine: ObservableObject {
         nextLoadRequestsInPlaceItemHandover = true
     }
 
+    /// Sprocket fork: the host wrote `AVDisplayManager.preferredDisplayCriteria` itself since this engine's last
+    /// write — a transcode's SDR rate on the remote-HLS route, say, where the engine writes nothing — so the next
+    /// load must write its own criteria again rather than skip them as unchanged (#133). `AVDisplayCriteria` cannot
+    /// be read back, which is why the host has to say so. tvOS only in effect; a no-op elsewhere.
+    @MainActor
+    public func hostDidWriteDisplayCriteria() {
+        displayCriteria.hostWroteCriteria()
+    }
+
     public func stop(resetDisplayCriteria: Bool = true, finalTeardown: Bool? = nil) {
         cancelPendingAudioSelection()
         releaseHeldPicture(reason: "stop")

@@ -12,14 +12,14 @@ the public-API contract.
 
 ### Fixed (Sprocket fork, after `7.54.0-sprocket.2`)
 
-- **The unchanged-skip (#133) reads what the display manager holds, not whether it holds anything.** A host that writes
-  `preferredDisplayCriteria` itself between the engine's loads (Sprocket Player asks for a transcode's SDR rate on the
-  remote-HLS route, where the engine writes nothing) left the manager holding criteria the engine took for its own, so the
-  next load skipped its write and the host's mode stayed in force; the host's remedy, clearing the manager, bounced the TV
-  through its native mode on the way (2026-11-05, Samsung Q70R: three switches in ten seconds and no HDMI signal until a
-  power cycle). `DisplayCriteriaController.CriteriaReading` reads the manager's criteria back (rate, codec, colour
-  extensions, transfer function) and the skip holds only when they are the target. `CriteriaReading.matches`.
-
+- **A host that writes display criteria of its own can say so: `hostDidWriteDisplayCriteria()`.** The unchanged-skip
+  (#133) asked the display manager only whether it held ANY criteria, so criteria a host had written between the engine's
+  loads (Sprocket Player asks for a transcode's SDR rate on the remote-HLS route, where the engine writes nothing) passed
+  as the engine's own, the next load skipped its write, and the host's mode stayed in force; the host's remedy, clearing the
+  manager, bounced the TV through its native mode on the way (2026-11-05, Samsung Q70R: three switches in ten seconds and
+  no HDMI signal until a power cycle). `AVDisplayCriteria` cannot be read back (an initializer, no properties — tag
+  `7.54.0-sprocket.3` tried and does not compile), so the host tells the engine, which drops its baseline and writes again on
+  the next load.
 - **A deferred audio pick no longer rebuilds a session that settled on the remote-HLS bypass.** `selectAudioTrack` refuses
   the bypass at the call, but a pick asked while a load was still routing passed that guard with the previous session's
   route and ran once the new session was up. On the bypass a rebuild reopens the playlist as a file, the reader refuses the
