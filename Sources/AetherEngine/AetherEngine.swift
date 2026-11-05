@@ -7375,6 +7375,25 @@ public final class AetherEngine: ObservableObject {
             try? await Task.sleep(
                 for: .milliseconds(DisplayCriteriaController.masterAcceptanceSettleMs))
             guard !Task.isCancelled, self.loadGeneration == gen else { return }
+            // The reading needs the session playing, and a host may be holding it paused over the very
+            // switch the master caused (`masterAcceptanceAwaitsPlayback`): wait for play rather than read
+            // a paused session as no answer and fall to a headroom probe this panel may never raise.
+            let awaitingPlayback = DispatchTime.now()
+            while !Task.isCancelled, self.loadGeneration == gen,
+                  DisplayCriteriaController.masterAcceptanceAwaitsPlayback(
+                    elapsedMs: DisplayCriteriaController.elapsedMs(since: awaitingPlayback),
+                    sessionIsPlaying: self.state == .playing) {
+                try? await Task.sleep(
+                    for: .milliseconds(DisplayCriteriaController.playbackProbeIntervalMs))
+            }
+            guard !Task.isCancelled, self.loadGeneration == gen else { return }
+            if self.state != .playing {
+                EngineLog.emit(
+                    "[DisplayCriteria] acceptance reading skipped: the session did not play within "
+                    + "\(DisplayCriteriaController.playbackProbeWindowMs)ms of the settle window (a host "
+                    + "hold?); the headroom probe answers alone",
+                    category: .engine)
+            }
             if DisplayCriteriaController.masterAcceptanceProvesPanel(
                 servingHDRMaster: self.nativeVideoSession?.servingMasterPlaylist == true
                     && self.nativeVideoSession?.servedSourceIsHDR == true,

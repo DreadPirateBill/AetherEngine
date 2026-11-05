@@ -418,6 +418,20 @@ final class DisplayCriteriaController {
         servingHDRMaster && !fellBackToMedia && sessionIsPlaying
     }
 
+    /// Whether the acceptance reading waits for the session to play before it is taken.
+    ///
+    /// The reading was taken once, at the settle window, and needed the session playing at that instant. A
+    /// host that holds playback over a mode switch (paused until the TV has locked, then a settle of its own)
+    /// has the session paused exactly then, so the proof was skipped on every load that switched the panel
+    /// and taken on every load that did not: a title read SDR when it had just moved the TV to HDR and HDR
+    /// when the TV was already there (Sprocket Player, Samsung Q70R, 2026-11-05). The rejection the reading
+    /// relies on arrived long before, at parse time; what play adds is only that frames are composited. So
+    /// the reading waits for that, up to the probe window, and a session that never plays in it is one the
+    /// headroom probe could not have answered for either.
+    nonisolated static func masterAcceptanceAwaitsPlayback(elapsedMs: Int, sessionIsPlaying: Bool) -> Bool {
+        !sessionIsPlaying && elapsedMs < playbackProbeWindowMs
+    }
+
     /// Whether the probe takes another sample. One reading above 1.0 is authoritative and latches the proof
     /// for good, so the first hit ends the probe.
     nonisolated static func playbackProbeContinues(elapsedMs: Int, observedHDR: Bool) -> Bool {

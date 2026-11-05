@@ -32,6 +32,17 @@ struct Issue459AcceptanceProvesPanelTests {
             servingHDRMaster: true, fellBackToMedia: false, sessionIsPlaying: false) == false)
     }
 
+    /// Sprocket fork: a host holding playback over the switch the master caused has the session paused at
+    /// the settle window. The reading waits for play instead of taking the pause as no answer.
+    @Test("The acceptance reading waits for a paused session to play, up to the probe window")
+    func readingWaitsForPlayback() {
+        #expect(DisplayCriteriaController.masterAcceptanceAwaitsPlayback(elapsedMs: 0, sessionIsPlaying: false))
+        #expect(DisplayCriteriaController.masterAcceptanceAwaitsPlayback(elapsedMs: 3_000, sessionIsPlaying: false))
+        #expect(DisplayCriteriaController.masterAcceptanceAwaitsPlayback(elapsedMs: 0, sessionIsPlaying: true) == false)
+        #expect(DisplayCriteriaController.masterAcceptanceAwaitsPlayback(
+            elapsedMs: DisplayCriteriaController.playbackProbeWindowMs, sessionIsPlaying: false) == false)
+    }
+
     /// A rejection is decided at parse and eligibility time, measured at 54 to 61 ms on device with zero
     /// `errorLog` events. The settle window has to clear that by an order of magnitude and still fit inside
     /// the probe window it delays.

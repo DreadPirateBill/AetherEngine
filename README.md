@@ -29,8 +29,10 @@
 One change over upstream, in `Package.swift`: the `AetherEngine` library product is declared `type: .dynamic`, so a
 host that already links a *static* FFmpeg (Sprocket Player carries MPVKit's static `Lib*` archives beside VLCKit)
 gets the engine's `avcodec_*` calls bound to the `AetherLib*` frameworks rather than to the host's other FFmpeg
-(upstream README, "One FFmpeg, and it has to be the engine's"). Nothing else differs; the branch is rebased onto each
-upstream tag it tracks (currently `7.53.0`). Published under the same LGPL-3.0 + App Store exception as upstream.
+(upstream README, "One FFmpeg, and it has to be the engine's"). One fix on top, offered upstream: the accepted-master proof of an HDR
+panel (#459) waits for the session to play instead of needing it playing half a second after the load, which a host
+that holds playback over the mode switch never is (`CHANGELOG.md`, Unreleased). The branch is rebased onto each
+upstream tag it tracks (currently `7.54.0`). Published under the same LGPL-3.0 + App Store exception as upstream.
 
 ## What it is
 

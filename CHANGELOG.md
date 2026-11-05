@@ -10,7 +10,15 @@ the public-API contract.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed (Sprocket fork, `7.54.0-sprocket.2`)
+
+- **The accepted-master proof of an HDR panel (#459) waits for the session to play.** It was read once, half a
+  second after the load, and needed the session playing at that instant. A host that holds playback over the mode
+  switch the master itself caused has the session paused exactly then, so the proof was skipped on every load that
+  switched the panel and taken on every load that did not: the same Dolby Vision Profile 8 title read SDR when it
+  had just moved the TV to HDR and HDR10+ when the TV was already there, on a panel whose EDR headroom never rises
+  (Sprocket Player on a Samsung Q70R, 2026-11-05). The reading now waits for play, up to the probe window, and
+  says so in the log when the session never plays in it. `DisplayCriteriaController.masterAcceptanceAwaitsPlayback`.
 
 ## [7.54.0] - 2026-11-01
 
