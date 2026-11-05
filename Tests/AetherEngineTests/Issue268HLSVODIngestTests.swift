@@ -115,11 +115,11 @@ final class Issue268HLSVODIngestTests: XCTestCase {
 
     func testIngestTakesDecision() {
         typealias Verdict = MPEGTransportStreamCodecProbe.Verdict
-        XCTAssertTrue(HLSVODIngestReader.ingestTakes(.hevcInMPEGTS, playlistHasMap: false, acceptAnyMPEGTS: false))
-        XCTAssertFalse(HLSVODIngestReader.ingestTakes(.otherCarriage, playlistHasMap: false, acceptAnyMPEGTS: false))
-        XCTAssertTrue(HLSVODIngestReader.ingestTakes(.otherCarriage, playlistHasMap: false, acceptAnyMPEGTS: true))
-        XCTAssertFalse(HLSVODIngestReader.ingestTakes(.otherCarriage, playlistHasMap: true, acceptAnyMPEGTS: true), "fMP4 stays with AVPlayer")
-        XCTAssertFalse(HLSVODIngestReader.ingestTakes(.inconclusive, playlistHasMap: false, acceptAnyMPEGTS: true))
+        XCTAssertTrue(MPEGTransportStreamCodecProbe.ingestTakes(.hevcInMPEGTS, playlistHasMap: false, acceptAnyMPEGTS: false))
+        XCTAssertFalse(MPEGTransportStreamCodecProbe.ingestTakes(.otherCarriage, playlistHasMap: false, acceptAnyMPEGTS: false))
+        XCTAssertTrue(MPEGTransportStreamCodecProbe.ingestTakes(.otherCarriage, playlistHasMap: false, acceptAnyMPEGTS: true))
+        XCTAssertFalse(MPEGTransportStreamCodecProbe.ingestTakes(.otherCarriage, playlistHasMap: true, acceptAnyMPEGTS: true), "fMP4 stays with AVPlayer")
+        XCTAssertFalse(MPEGTransportStreamCodecProbe.ingestTakes(.inconclusive, playlistHasMap: false, acceptAnyMPEGTS: true))
     }
 
     func testFMP4AndLivePlaylistsRemainOnExistingRoutes() async throws {

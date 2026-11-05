@@ -18,7 +18,7 @@ the public-API contract.
   2026-11-05) while FFmpeg played it, and the engine's own decoder, offered the failure, had no route for a remote
   playlist. A host that asks gets the ingest for any MPEG-TS playlist, before the bypass and before the probe (which
   would open the playlist as a file and restart a server's transcoder session for nothing); fMP4 and unreadable
-  playlists fall through to the route the other options choose. `HLSVODIngestReader.ingestTakes`.
+  playlists fall through to the route the other options choose. `MPEGTransportStreamCodecProbe.ingestTakes` (tag `7.54.0-sprocket.5` placed it on the wrong type and does not compile).
 
 ### Fixed (Sprocket fork, after `7.54.0-sprocket.2`)
 

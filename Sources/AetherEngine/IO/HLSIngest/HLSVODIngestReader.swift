@@ -129,7 +129,8 @@ final class HLSVODIngestReader: TimeSeekableIOReader, @unchecked Sendable {
             }
             let verdict = try await reader.probeCarriage(segmentURL, duration: first.duration,
                                                          byteRange: first.byteRange)
-            guard Self.ingestTakes(verdict, playlistHasMap: media.hasMap, acceptAnyMPEGTS: acceptAnyMPEGTS) else {
+            // `resolveMedia` has already refused an EXT-X-MAP playlist (fMP4), so a reader here holds a TS-or-nothing list.
+            guard MPEGTransportStreamCodecProbe.ingestTakes(verdict, playlistHasMap: false, acceptAnyMPEGTS: acceptAnyMPEGTS) else {
                 return nil
             }
             reader.condition.withLock {
