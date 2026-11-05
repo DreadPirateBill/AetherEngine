@@ -4262,13 +4262,15 @@ public final class AetherEngine: ObservableObject {
         audioSourceStreamIndex: Int32?,
         discTitleID: Int?,
         generation: UInt64,
-        evidence: String
+        evidence: String,
+        acceptAnyMPEGTS: Bool = false
     ) async throws -> HLSVODIngestReroute {
         guard let reader = try await HLSVODIngestReader.makeIfHEVCMPEGTS(
             playlistURL: playlistURL,
             httpHeaders: options.httpHeaders,
             persistentHTTP1: options.heldSourceConnection,
-            diagnosticContext: options.sourceDiagnosticsContext
+            diagnosticContext: options.sourceDiagnosticsContext,
+            acceptAnyMPEGTS: acceptAnyMPEGTS
         ) else { return .notTaken }
         try checkLoadCurrent(generation)
         EngineLog.emit(
@@ -4652,6 +4654,27 @@ public final class AetherEngine: ObservableObject {
         // Audit CORE-6: the first suspension point. Two loads issued back to back right after init
         // both wait on the same category task, and the older one must not resume as the current one.
         try checkLoadCurrent(gen)
+
+        // Sprocket fork: a host that asks for it gets a finite MPEG-TS playlist on the seekable ingest (#268)
+        // whatever its codec, so the engine demuxes the server's segments itself and AVPlayer plays the
+        // loopback — the route every FFmpeg-based player takes on a media server's transcode. Before the
+        // bypass, and before the probe (which would open the playlist as a file and restart a server's
+        // transcoder session for nothing). A playlist the ingest cannot take falls through.
+        if options.ingestsRemoteHLSVOD, !options.isLive, case .url(let playlistURL) = source {
+            if case .taken(let probe) = try await rerouteOntoHEVCMPEGTSIngest(
+                playlistURL: playlistURL,
+                options: loadedOptions,
+                startPosition: startPosition,
+                audioSourceStreamIndex: audioSourceStreamIndex,
+                discTitleID: discTitleID,
+                generation: gen,
+                evidence: "the host asked for the ingest on a finite MPEG-TS playlist",
+                acceptAnyMPEGTS: true
+            ) {
+                return probe
+            }
+            EngineLog.emit("[AetherEngine] ingestsRemoteHLSVOD: the ingest did not take this playlist; continuing on the usual route", category: .engine)
+        }
 
         // nativeRemoteHLS: skip probe + loopback; play HLS URL directly with AVPlayer (Jellyfin already serves HLS).
         // Routed before the probe because we never demux the m3u8.

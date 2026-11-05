@@ -94,12 +94,17 @@ final class HLSVODIngestReader: TimeSeekableIOReader, @unchecked Sendable {
     /// Returns a pre-resolved reader only when the finite playlist has positive
     /// content evidence for HEVC in MPEG-TS. Unknown, live, fMP4, H.264 and
     /// demuxed-audio shapes stay on the existing native remote-HLS route.
+    ///
+    /// Sprocket fork: `acceptAnyMPEGTS` takes every MPEG-TS playlist (no EXT-X-MAP, a PMT read that
+    /// found a program), H.264 included, for a host that wants the engine's own demux of a server's
+    /// transcode (`LoadOptions.ingestsRemoteHLSVOD`). fMP4 and unreadable playlists still return nil.
     static func makeIfHEVCMPEGTS(
         playlistURL: URL,
         httpHeaders: [String: String],
         session: URLSession? = nil,
         persistentHTTP1: Bool = false,
-        diagnosticContext: SourceNetworkDiagnostics.Context? = SourceNetworkDiagnostics.context
+        diagnosticContext: SourceNetworkDiagnostics.Context? = SourceNetworkDiagnostics.context,
+        acceptAnyMPEGTS: Bool = false
     ) async throws -> HLSVODIngestReader? {
         let reader = HLSVODIngestReader(
             playlistURL: playlistURL,
@@ -122,8 +127,9 @@ final class HLSVODIngestReader: TimeSeekableIOReader, @unchecked Sendable {
                   ) else {
                 return nil
             }
-            guard try await reader.probeCarriage(segmentURL, duration: first.duration,
-                                                 byteRange: first.byteRange) == .hevcInMPEGTS else {
+            let verdict = try await reader.probeCarriage(segmentURL, duration: first.duration,
+                                                         byteRange: first.byteRange)
+            guard Self.ingestTakes(verdict, playlistHasMap: media.hasMap, acceptAnyMPEGTS: acceptAnyMPEGTS) else {
                 return nil
             }
             reader.condition.withLock {
@@ -876,6 +882,19 @@ enum MPEGTransportStreamCodecProbe {
             packetStart += packetSize
         }
         return sawPMT ? .otherCarriage : .inconclusive
+    }
+
+    /// Sprocket fork: whether the ingest takes a playlist on its carriage verdict. HEVC in MPEG-TS always
+    /// (#268). Asked for any MPEG-TS, a PMT that named something else (`otherCarriage` with no EXT-X-MAP,
+    /// which is MPEG-TS or nothing the ingest could serve either way) is taken too; an fMP4 playlist and
+    /// an inconclusive read never are.
+    nonisolated static func ingestTakes(_ verdict: MPEGTransportStreamCodecProbe.Verdict,
+                                        playlistHasMap: Bool, acceptAnyMPEGTS: Bool) -> Bool {
+        switch verdict {
+        case .hevcInMPEGTS: return true
+        case .otherCarriage: return acceptAnyMPEGTS && !playlistHasMap
+        case .inconclusive: return false
+        }
     }
 
     /// One packet's contribution: `inconclusive` unless it opens a PMT section, which is then read for

@@ -94,6 +94,34 @@ final class Issue268HLSVODIngestTests: XCTestCase {
         XCTAssertNil(reader)
     }
 
+    /// Sprocket fork: the same H.264 playlist joins the ingest when the host asks for any MPEG-TS.
+    func testH264MPEGTSJoinsTheIngestWhenAsked() async throws {
+        let root = try XCTUnwrap(URL(string: "https://vod.test/h264-asked.m3u8"))
+        let segment = try XCTUnwrap(URL(string: "https://vod.test/h264-asked.ts"))
+        Issue268URLProtocol.bodyByURL[root.absoluteString] = mediaPlaylist("h264-asked.ts")
+        Issue268URLProtocol.bodyByURL[segment.absoluteString] = transportStream(streamType: 0x1B)
+
+        let session = makeSession()
+        defer { session.invalidateAndCancel() }
+        let reader = try await HLSVODIngestReader.makeIfHEVCMPEGTS(
+            playlistURL: root,
+            httpHeaders: [:],
+            session: session,
+            acceptAnyMPEGTS: true
+        )
+        XCTAssertNotNil(reader)
+        reader?.close()
+    }
+
+    func testIngestTakesDecision() {
+        typealias Verdict = MPEGTransportStreamCodecProbe.Verdict
+        XCTAssertTrue(HLSVODIngestReader.ingestTakes(.hevcInMPEGTS, playlistHasMap: false, acceptAnyMPEGTS: false))
+        XCTAssertFalse(HLSVODIngestReader.ingestTakes(.otherCarriage, playlistHasMap: false, acceptAnyMPEGTS: false))
+        XCTAssertTrue(HLSVODIngestReader.ingestTakes(.otherCarriage, playlistHasMap: false, acceptAnyMPEGTS: true))
+        XCTAssertFalse(HLSVODIngestReader.ingestTakes(.otherCarriage, playlistHasMap: true, acceptAnyMPEGTS: true), "fMP4 stays with AVPlayer")
+        XCTAssertFalse(HLSVODIngestReader.ingestTakes(.inconclusive, playlistHasMap: false, acceptAnyMPEGTS: true))
+    }
+
     func testFMP4AndLivePlaylistsRemainOnExistingRoutes() async throws {
         let fmp4 = try XCTUnwrap(URL(string: "https://vod.test/fmp4.m3u8"))
         let live = try XCTUnwrap(URL(string: "https://vod.test/live.m3u8"))

@@ -786,6 +786,16 @@ public struct LoadOptions: Sendable, Equatable {
     /// it along with the watchdog.
     public var nativeRemoteHLSIngestFallback: Bool
 
+    /// Sprocket fork: a finite MPEG-TS playlist goes through the seekable TS → fMP4 ingest (#268) whatever its
+    /// video codec, so the engine fetches and demuxes the server's segments itself and AVPlayer plays the
+    /// loopback — the route every FFmpeg-based player takes on a media server's transcode. Without it the ingest
+    /// is taken for HEVC only and an H.264 playlist goes to AVPlayer's own HLS stack, which refused one such
+    /// playlist at parse time with nothing to say (-12927, a Plex transcode, 2026-11-05) while FFmpeg played it.
+    /// Read before `nativeRemoteHLS`: a playlist the ingest cannot take (fMP4 segments, an unreachable first
+    /// segment) falls through to the route those options choose. Finite playlists only; live keeps its own
+    /// ingest (`nativeRemoteHLSIngestFallback`). Default `false`.
+    public var ingestsRemoteHLSVOD: Bool
+
     /// Emit raw ASS event lines (`ReadOrder,Layer,Style,...,Text` including override tags) instead of plain-text extraction. Opt-in for hosts that render ASS styling themselves; pair with `TrackInfo.assHeader`. Only affects ASS / SSA codecs, on embedded and sidecar tracks alike: libavcodec normalises SubRip, WebVTT and mov_text through `ff_ass_add_rect` as well, so those carry an ASS payload the engine could emit but never does, and a session that mixes an ASS track with a SubRip one needs no reload to cross between them (AE#587). Default `false` (AetherEngine#30).
     public var preserveASSMarkup: Bool
 
@@ -1100,6 +1110,7 @@ public struct LoadOptions: Sendable, Equatable {
         clampsLiveResumeToWindow: Bool = true,
         nativeRemoteHLS: Bool = false,
         nativeRemoteHLSIngestFallback: Bool = true,
+        ingestsRemoteHLSVOD: Bool = false,
         preserveASSMarkup: Bool = false,
         prepareNativeSubtitles: Bool = false,
         eagerNativeSubtitleReaders: Bool = false,
@@ -1162,6 +1173,7 @@ public struct LoadOptions: Sendable, Equatable {
         self.clampsLiveResumeToWindow = clampsLiveResumeToWindow
         self.nativeRemoteHLS = nativeRemoteHLS
         self.nativeRemoteHLSIngestFallback = nativeRemoteHLSIngestFallback
+        self.ingestsRemoteHLSVOD = ingestsRemoteHLSVOD
         self.preserveASSMarkup = preserveASSMarkup
         self.prepareNativeSubtitles = prepareNativeSubtitles
         self.eagerNativeSubtitleReaders = eagerNativeSubtitleReaders

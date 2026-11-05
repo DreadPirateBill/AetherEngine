@@ -10,6 +10,16 @@ the public-API contract.
 
 ## [Unreleased]
 
+### Added (Sprocket fork, after `7.54.0-sprocket.4`)
+
+- **`LoadOptions.ingestsRemoteHLSVOD`: a finite MPEG-TS playlist on the seekable ingest whatever its codec.** The
+  #268 ingest took HEVC in MPEG-TS only, because AVPlayer carries H.264 in MPEG-TS itself; it refused a Plex
+  transcode's H.264 playlist at parse time with nothing to say (`CoreMediaErrorDomain -12927`, Sprocket Player,
+  2026-11-05) while FFmpeg played it, and the engine's own decoder, offered the failure, had no route for a remote
+  playlist. A host that asks gets the ingest for any MPEG-TS playlist, before the bypass and before the probe (which
+  would open the playlist as a file and restart a server's transcoder session for nothing); fMP4 and unreadable
+  playlists fall through to the route the other options choose. `HLSVODIngestReader.ingestTakes`.
+
 ### Fixed (Sprocket fork, after `7.54.0-sprocket.2`)
 
 - **A host that writes display criteria of its own can say so: `hostDidWriteDisplayCriteria()`.** The unchanged-skip
