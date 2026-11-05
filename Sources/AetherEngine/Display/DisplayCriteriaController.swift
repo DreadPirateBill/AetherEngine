@@ -99,6 +99,56 @@ final class DisplayCriteriaController {
         let hasExtensions: Bool
     }
 
+    /// Sprocket fork: what the display manager holds, read back from its `AVDisplayCriteria`. The dynamic
+    /// range is only legible from a transfer-function extension, so it is nil where the criteria carry none.
+    struct CriteriaReading: Equatable {
+        let refreshRate: Float
+        let codecType: CMVideoCodecType
+        let hasExtensions: Bool
+        let transferIsHDR: Bool?
+
+        /// Whether what the manager holds is `target`, whoever wrote it. The dynamic range is compared only
+        /// where the reading can say (`omitCriteriaColorExtensions` writes none, and must still skip its own).
+        func matches(_ target: AppliedCriteria) -> Bool {
+            refreshRate == target.effectiveRate && codecType == target.codecType && hasExtensions == target.hasExtensions
+                && (transferIsHDR.map { $0 == target.isHDR } ?? true)
+        }
+
+        #if os(tvOS)
+        init(_ criteria: AVDisplayCriteria) {
+            let description = criteria.formatDescription
+            refreshRate = criteria.refreshRate
+            codecType = CMFormatDescriptionGetMediaSubType(description)
+            let extensions = CMFormatDescriptionGetExtensions(description) as? [String: Any] ?? [:]
+            hasExtensions = extensions[kCMFormatDescriptionExtension_ColorPrimaries as String] != nil
+            if let transfer = extensions[kCMFormatDescriptionExtension_TransferFunction as String] as? String {
+                transferIsHDR = transfer == (kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ as String)
+                    || transfer == (kCVImageBufferTransferFunction_ITU_R_2100_HLG as String)
+            } else {
+                transferIsHDR = nil
+            }
+        }
+        #endif
+
+        init(refreshRate: Float, codecType: CMVideoCodecType, hasExtensions: Bool, transferIsHDR: Bool?) {
+            self.refreshRate = refreshRate
+            self.codecType = codecType
+            self.hasExtensions = hasExtensions
+            self.transferIsHDR = transferIsHDR
+        }
+    }
+
+    /// Sprocket fork: whether the manager already holds the target, so the write can be skipped. nil is an
+    /// empty manager (cleared since the last write, AE#678); criteria that read as something else are a
+    /// host's own write — a Sprocket Player transcode asks for its SDR rate itself, on the remote-HLS route
+    /// the engine writes nothing for — and the engine's last write is no longer what is in force. Before
+    /// this the manager was only asked whether it held ANYTHING, so a host's criteria passed as the
+    /// engine's own and the next load kept the host's mode (2026-11-05: a 24 Hz SDR request left in force
+    /// under a 23.976 HDR10 title until the host cleared it, which bounced the TV through its native mode).
+    nonisolated static func managerHoldsTarget(_ reading: CriteriaReading?, target: AppliedCriteria) -> Bool {
+        reading?.matches(target) ?? false
+    }
+
     enum ApplyResult {
         /// HDR/DV criteria written; a dynamic-range switch is expected (caller should pre-flight waitForSwitch).
         case willSwitch
@@ -873,10 +923,15 @@ final class DisplayCriteriaController {
                 category: .engine
             )
         }
-        let managerHoldsCriteria = displayManager.preferredDisplayCriteria != nil
-        if didApply, !managerHoldsCriteria {
+        let managerReading = displayManager.preferredDisplayCriteria.map(CriteriaReading.init)
+        let managerHoldsCriteria = Self.managerHoldsTarget(managerReading, target: target)
+        if didApply, lastApplied == target, !managerHoldsCriteria {
             EngineLog.emit(
-                "[DisplayCriteria] criteria were cleared outside the engine since its last SET; writing again",
+                managerReading == nil
+                    ? "[DisplayCriteria] criteria were cleared outside the engine since its last SET; writing again"
+                    : "[DisplayCriteria] the display manager holds criteria that are not this engine's last SET (a host's: "
+                      + "rate=\(managerReading!.refreshRate) codec=\(fourccString(managerReading!.codecType)) "
+                      + "hdr=\(managerReading!.transferIsHDR.map { "\($0)" } ?? "unreadable")); writing again",
                 category: .engine
             )
         }

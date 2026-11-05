@@ -1,5 +1,6 @@
 import Testing
 import CoreMedia
+import CoreVideo
 @testable import AetherEngine
 
 // #133 Issue B: on a same-format live zap (e.g. SDR 50 Hz -> SDR 50 Hz), the engine re-applied identical
@@ -80,5 +81,41 @@ struct DisplayCriteriaUnchangedSkipTests {
             isHDR: true, effectiveRate: 50, codecType: dvh1, hasExtensions: true)
         #expect(DisplayCriteriaController.applyOutcome(
             didApply: true, last: hdr, target: hdr, managerHoldsCriteria: false) == .willSwitch)
+    }
+
+    // MARK: - Sprocket fork: the manager's own contents decide the skip
+
+    private static let hdrTarget = DisplayCriteriaController.AppliedCriteria(
+        isHDR: true, effectiveRate: 23.976, codecType: kCMVideoCodecType_HEVC, hasExtensions: true)
+
+    @Test("The engine's own HDR write read back is the target: skip")
+    func ownWriteReadsAsTarget() {
+        let reading = DisplayCriteriaController.CriteriaReading(
+            refreshRate: 23.976, codecType: kCMVideoCodecType_HEVC, hasExtensions: true, transferIsHDR: true)
+        #expect(DisplayCriteriaController.managerHoldsTarget(reading, target: Self.hdrTarget))
+    }
+
+    @Test("A host's SDR rate request is not the target, whatever its rate: write again")
+    func hostSDRRequestIsForeign() {
+        let sameRate = DisplayCriteriaController.CriteriaReading(
+            refreshRate: 23.976, codecType: kCVPixelFormatType_64RGBAHalf, hasExtensions: true, transferIsHDR: false)
+        let otherRate = DisplayCriteriaController.CriteriaReading(
+            refreshRate: 24, codecType: kCVPixelFormatType_64RGBAHalf, hasExtensions: true, transferIsHDR: false)
+        #expect(DisplayCriteriaController.managerHoldsTarget(sameRate, target: Self.hdrTarget) == false)
+        #expect(DisplayCriteriaController.managerHoldsTarget(otherRate, target: Self.hdrTarget) == false)
+    }
+
+    @Test("An empty manager is a cleared one: write again")
+    func emptyManagerIsCleared() {
+        #expect(DisplayCriteriaController.managerHoldsTarget(nil, target: Self.hdrTarget) == false)
+    }
+
+    @Test("Criteria written without colour extensions cannot say their range, and still skip their own")
+    func extensionlessWriteSkipsItself() {
+        let target = DisplayCriteriaController.AppliedCriteria(
+            isHDR: true, effectiveRate: 24, codecType: kCMVideoCodecType_HEVC, hasExtensions: false)
+        let reading = DisplayCriteriaController.CriteriaReading(
+            refreshRate: 24, codecType: kCMVideoCodecType_HEVC, hasExtensions: false, transferIsHDR: nil)
+        #expect(DisplayCriteriaController.managerHoldsTarget(reading, target: target))
     }
 }

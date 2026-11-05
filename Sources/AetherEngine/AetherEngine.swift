@@ -7946,6 +7946,18 @@ public final class AetherEngine: ObservableObject {
                 self.pendingAudioSelection = nil
                 guard !Task.isCancelled, self.audioSelectionEpoch == epoch else { return }
                 if self.activeAudioTrackIndex == selected { continue }
+                // Sprocket fork: the route is read again here, not only at the call. A pick asked while a
+                // load was still routing passed the guard above with the previous session's route, and
+                // ran once the load had settled on the remote-HLS bypass: a rebuild there reopens the
+                // playlist as a file, which the reader refuses, and the session ends with it (a Plex
+                // transcode, 2026-11-05). On the bypass the selection is AVFoundation's, as the guard says.
+                if self.videoRoute == .remoteBypass {
+                    EngineLog.emit(
+                        "[AetherEngine] selectAudioTrack(\(selected)) dropped: asked during a load that settled "
+                        + "on the remote-HLS bypass, where AVPlayer owns the audio selection",
+                        category: .engine)
+                    continue
+                }
                 let beforeReload = self.loadGeneration
                 let failure = await self.reloadWithAudioOverride(
                     url: url, audioStreamIndex: Int32(selected), expectedGeneration: beforeReload,

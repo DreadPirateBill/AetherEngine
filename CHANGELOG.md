@@ -10,6 +10,22 @@ the public-API contract.
 
 ## [Unreleased]
 
+### Fixed (Sprocket fork, after `7.54.0-sprocket.2`)
+
+- **The unchanged-skip (#133) reads what the display manager holds, not whether it holds anything.** A host that writes
+  `preferredDisplayCriteria` itself between the engine's loads (Sprocket Player asks for a transcode's SDR rate on the
+  remote-HLS route, where the engine writes nothing) left the manager holding criteria the engine took for its own, so the
+  next load skipped its write and the host's mode stayed in force; the host's remedy, clearing the manager, bounced the TV
+  through its native mode on the way (2026-11-05, Samsung Q70R: three switches in ten seconds and no HDMI signal until a
+  power cycle). `DisplayCriteriaController.CriteriaReading` reads the manager's criteria back (rate, codec, colour
+  extensions, transfer function) and the skip holds only when they are the target. `CriteriaReading.matches`.
+
+- **A deferred audio pick no longer rebuilds a session that settled on the remote-HLS bypass.** `selectAudioTrack` refuses
+  the bypass at the call, but a pick asked while a load was still routing passed that guard with the previous session's
+  route and ran once the new session was up. On the bypass a rebuild reopens the playlist as a file, the reader refuses the
+  body (`hlsPlaylistOnVODPath`), and the session ends (a Plex transcode in Sprocket Player, 2026-11-05). The route is read
+  again when the pick runs, and a pick that lands on the bypass is logged and dropped, as the call-time guard does.
+
 ### Fixed (Sprocket fork, `7.54.0-sprocket.2`)
 
 - **The accepted-master proof of an HDR panel (#459) waits for the session to play.** It was read once, half a
