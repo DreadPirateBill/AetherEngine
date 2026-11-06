@@ -113,6 +113,16 @@ final class Issue268HLSVODIngestTests: XCTestCase {
         reader?.close()
     }
 
+    func testProbeSegmentIsTheOneReadFirst() {
+        let starts: [Double] = [0, 8, 16, 24, 32]
+        XCTAssertEqual(HLSVODIngestReader.probeSegmentIndex(starts: starts, atSeconds: nil), 0)
+        XCTAssertEqual(HLSVODIngestReader.probeSegmentIndex(starts: starts, atSeconds: 0), 0)
+        XCTAssertEqual(HLSVODIngestReader.probeSegmentIndex(starts: starts, atSeconds: 7.9), 0)
+        XCTAssertEqual(HLSVODIngestReader.probeSegmentIndex(starts: starts, atSeconds: 8), 1)
+        XCTAssertEqual(HLSVODIngestReader.probeSegmentIndex(starts: starts, atSeconds: 180.88), 4, "past the end lands on the last segment")
+        XCTAssertEqual(HLSVODIngestReader.probeSegmentIndex(starts: [], atSeconds: 10), 0)
+    }
+
     func testIngestTakesDecision() {
         typealias Verdict = MPEGTransportStreamCodecProbe.Verdict
         XCTAssertTrue(MPEGTransportStreamCodecProbe.ingestTakes(.hevcInMPEGTS, playlistHasMap: false, acceptAnyMPEGTS: false))

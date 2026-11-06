@@ -104,7 +104,8 @@ final class HLSVODIngestReader: TimeSeekableIOReader, @unchecked Sendable {
         session: URLSession? = nil,
         persistentHTTP1: Bool = false,
         diagnosticContext: SourceNetworkDiagnostics.Context? = SourceNetworkDiagnostics.context,
-        acceptAnyMPEGTS: Bool = false
+        acceptAnyMPEGTS: Bool = false,
+        probeAtSeconds: Double? = nil
     ) async throws -> HLSVODIngestReader? {
         let reader = HLSVODIngestReader(
             playlistURL: playlistURL,
@@ -119,7 +120,13 @@ final class HLSVODIngestReader: TimeSeekableIOReader, @unchecked Sendable {
         }
         do {
             let media = try await reader.resolveMedia()
-            guard let first = media.segments.first,
+            // Sprocket fork: the carriage is read off the segment the ingest will read FIRST, not segment 0. A media
+            // server told to start its transcoder at an offset lists the whole title and leaves the segments before
+            // the offset as empty placeholders (Plex answered segment 0 with one 188-byte packet, 2026-11-06), so a
+            // probe of segment 0 there is inconclusive and the playlist fell through to a route that cannot play it.
+            let probeIndex = Self.probeSegmentIndex(starts: media.starts, atSeconds: probeAtSeconds)
+            guard media.segments.indices.contains(probeIndex),
+                  case let first = media.segments[probeIndex],
                   first.crypt == nil,
                   let segmentURL = HLSPlaylistParser.resolve(
                     uri: first.uri,
@@ -923,6 +930,12 @@ enum MPEGTransportStreamCodecProbe {
             packetStart += packetSize
         }
         return sawPMT ? .otherCarriage : .inconclusive
+    }
+
+    /// Sprocket fork: the segment holding `atSeconds` (the last whose start is not after it), 0 for nil or anything before the first.
+    nonisolated static func probeSegmentIndex(starts: [Double], atSeconds: Double?) -> Int {
+        guard let atSeconds, atSeconds > 0 else { return 0 }
+        return max(0, (starts.lastIndex { $0 <= atSeconds } ?? 0))
     }
 
     /// Sprocket fork: whether the ingest takes a playlist on its carriage verdict. HEVC in MPEG-TS always

@@ -10,6 +10,14 @@ the public-API contract.
 
 ## [Unreleased]
 
+### Fixed (Sprocket fork, after `7.54.0-sprocket.7`)
+
+- **The VOD ingest's carriage probe reads the segment it will read first, not segment 0.** A media server told to start
+  its transcoder at an offset lists the whole title and leaves the segments before the offset as empty placeholders (Plex
+  answered segment 0 with a single 188-byte packet, 2026-11-06), so the probe of segment 0 was inconclusive, the ingest
+  declined the playlist, and it fell through to AVPlayer's HLS stack, which cannot play it. `makeIfHEVCMPEGTS` takes
+  `probeAtSeconds`, the load's start position, and probes the segment holding it. `HLSVODIngestReader.probeSegmentIndex`.
+
 ### Fixed (Sprocket fork, after `7.54.0-sprocket.6`)
 
 - **The VOD ingest asks again for a segment the origin held past the idle timeout.** A media server's

@@ -4270,7 +4270,8 @@ public final class AetherEngine: ObservableObject {
             httpHeaders: options.httpHeaders,
             persistentHTTP1: options.heldSourceConnection,
             diagnosticContext: options.sourceDiagnosticsContext,
-            acceptAnyMPEGTS: acceptAnyMPEGTS
+            acceptAnyMPEGTS: acceptAnyMPEGTS,
+            probeAtSeconds: startPosition
         ) else { return .notTaken }
         try checkLoadCurrent(generation)
         EngineLog.emit(
