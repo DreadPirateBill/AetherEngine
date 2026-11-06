@@ -425,8 +425,8 @@ final class HLSVODIngestReader: TimeSeekableIOReader, @unchecked Sendable {
             func spawn(_ index: Int) {
                 let item = resolvedSegments[index]
                 group.addTask {
-                    let bytes = try await self.fetch(
-                        item.1, limit: BoundedFetch.segmentLimit(forDuration: item.0.duration),
+                    let bytes = try await self.fetchSegmentWithPatience(
+                        item.1, index: index, limit: BoundedFetch.segmentLimit(forDuration: item.0.duration),
                         byteRange: item.0.byteRange)
                     guard let crypt = item.0.crypt else { return (index, bytes) }
                     return (
@@ -743,6 +743,46 @@ final class HLSVODIngestReader: TimeSeekableIOReader, @unchecked Sendable {
 
     /// A segment or a key body, cut off at `limit` while it arrives (audit NET-112). With a byte range,
     /// the segment's sub-range of that body.
+    /// Sprocket fork: a segment fetch that outlives the request's idle timeout. A media server's transcoder
+    /// produces segments on demand and answers a request for one it has not reached by holding it open —
+    /// Plex's held a request for the fifth 8 s segment past the 15 s idle timeout while the first four
+    /// arrived in a second (2026-11-05) — and one such expiry ended the session: the reader failed, the
+    /// producer's reads failed, two revives on the same dead reader failed, and the player left. The window
+    /// of four in-flight fetches is exactly what asks for a segment the transcoder has not produced yet.
+    /// A timeout or a dropped connection is retried on a fresh request, up to `segmentFetchAttempts`; the
+    /// idle timeout itself stays, so a dead origin is still found out within it.
+    private func fetchSegmentWithPatience(_ url: URL, index: Int, limit: Int, byteRange: HLSByteRange?) async throws -> Data {
+        var attempt = 1
+        while true {
+            do {
+                return try await fetch(url, limit: limit, byteRange: byteRange)
+            } catch {
+                guard Self.retriesSegmentFetch(after: error, attempt: attempt) else { throw error }
+                EngineLog.emit(
+                    "[HLSVODIngest] segment \(index): \(EngineLog.summary(of: error)) with no bytes; an origin producing on "
+                    + "demand is asked again (\(attempt)/\(Self.segmentFetchAttempts))",
+                    category: .engine)
+                attempt += 1
+                try Task.checkCancellation()
+            }
+        }
+    }
+
+    /// How many requests a segment gets before its transport failure is the session's. Eight at the
+    /// 15 s idle timeout is two minutes of patience with a transcoder, well past any segment it will
+    /// ever produce, and a dead origin still fails the session rather than hanging it.
+    static let segmentFetchAttempts = 8
+
+    /// Whether a failed segment fetch is asked again: only the transport's transient answers — the
+    /// request timed out with no bytes, or the connection was lost — and only while attempts remain.
+    /// An HTTP status, a body over the limit and a cancellation are never retried.
+    nonisolated static func retriesSegmentFetch(after error: Error, attempt: Int) -> Bool {
+        guard attempt < segmentFetchAttempts else { return false }
+        let nsError = error as NSError
+        guard nsError.domain == NSURLErrorDomain else { return false }
+        return nsError.code == NSURLErrorTimedOut || nsError.code == NSURLErrorNetworkConnectionLost
+    }
+
     private func fetch(_ url: URL, limit: Int, role: SourceNetworkDiagnostics.Role = .hlsSegment,
                        byteRange: HLSByteRange? = nil) async throws -> Data {
         let data: Data

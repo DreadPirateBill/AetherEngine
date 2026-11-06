@@ -10,6 +10,16 @@ the public-API contract.
 
 ## [Unreleased]
 
+### Fixed (Sprocket fork, after `7.54.0-sprocket.6`)
+
+- **The VOD ingest asks again for a segment the origin held past the idle timeout.** A media server's
+  transcoder produces on demand and holds a request for a segment it has not reached; the ingest's window of
+  four in-flight fetches asks for exactly such a segment, and one 15 s expiry on it ended the session — the
+  reader failed, the producer's reads failed, two revives on the same dead reader failed, and the host's
+  player left (Plex, fifth 8 s segment, Sprocket Player 2026-11-05, twice; the first four segments had arrived
+  in a second). A timed-out or dropped segment request is now retried on a fresh request up to eight times;
+  the idle timeout stays, so a dead origin still fails within it. `HLSVODIngestReader.retriesSegmentFetch`.
+
 ### Added (Sprocket fork, after `7.54.0-sprocket.4`)
 
 - **`LoadOptions.ingestsRemoteHLSVOD`: a finite MPEG-TS playlist on the seekable ingest whatever its codec.** The

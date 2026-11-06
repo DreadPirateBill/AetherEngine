@@ -122,6 +122,18 @@ final class Issue268HLSVODIngestTests: XCTestCase {
         XCTAssertFalse(MPEGTransportStreamCodecProbe.ingestTakes(.inconclusive, playlistHasMap: false, acceptAnyMPEGTS: true))
     }
 
+    /// Sprocket fork: a request an on-demand transcoder held past the idle timeout is asked again.
+    func testTimedOutSegmentFetchIsRetriedWhileAttemptsRemain() {
+        let timedOut = NSError(domain: NSURLErrorDomain, code: NSURLErrorTimedOut)
+        let lost = NSError(domain: NSURLErrorDomain, code: NSURLErrorNetworkConnectionLost)
+        let refused = HLSIngestError.playlistUnreachable(status: 404)
+        XCTAssertTrue(HLSVODIngestReader.retriesSegmentFetch(after: timedOut, attempt: 1))
+        XCTAssertTrue(HLSVODIngestReader.retriesSegmentFetch(after: lost, attempt: 3))
+        XCTAssertFalse(HLSVODIngestReader.retriesSegmentFetch(after: timedOut, attempt: HLSVODIngestReader.segmentFetchAttempts))
+        XCTAssertFalse(HLSVODIngestReader.retriesSegmentFetch(after: refused, attempt: 1), "a status is the origin's answer")
+        XCTAssertFalse(HLSVODIngestReader.retriesSegmentFetch(after: CancellationError(), attempt: 1))
+    }
+
     func testFMP4AndLivePlaylistsRemainOnExistingRoutes() async throws {
         let fmp4 = try XCTUnwrap(URL(string: "https://vod.test/fmp4.m3u8"))
         let live = try XCTUnwrap(URL(string: "https://vod.test/live.m3u8"))
