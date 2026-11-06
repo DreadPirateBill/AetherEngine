@@ -91,6 +91,12 @@ final class HLSVODIngestReader: TimeSeekableIOReader, @unchecked Sendable {
         }
     }
 
+    /// Sprocket fork: the segment holding `atSeconds` (the last whose start is not after it), 0 for nil or anything before the first.
+    nonisolated static func probeSegmentIndex(starts: [Double], atSeconds: Double?) -> Int {
+        guard let atSeconds, atSeconds > 0 else { return 0 }
+        return max(0, (starts.lastIndex { $0 <= atSeconds } ?? 0))
+    }
+
     /// Returns a pre-resolved reader only when the finite playlist has positive
     /// content evidence for HEVC in MPEG-TS. Unknown, live, fMP4, H.264 and
     /// demuxed-audio shapes stay on the existing native remote-HLS route.
@@ -930,12 +936,6 @@ enum MPEGTransportStreamCodecProbe {
             packetStart += packetSize
         }
         return sawPMT ? .otherCarriage : .inconclusive
-    }
-
-    /// Sprocket fork: the segment holding `atSeconds` (the last whose start is not after it), 0 for nil or anything before the first.
-    nonisolated static func probeSegmentIndex(starts: [Double], atSeconds: Double?) -> Int {
-        guard let atSeconds, atSeconds > 0 else { return 0 }
-        return max(0, (starts.lastIndex { $0 <= atSeconds } ?? 0))
     }
 
     /// Sprocket fork: whether the ingest takes a playlist on its carriage verdict. HEVC in MPEG-TS always
