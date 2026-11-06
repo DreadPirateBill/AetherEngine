@@ -770,12 +770,13 @@ final class HLSVODIngestReader: TimeSeekableIOReader, @unchecked Sendable {
             do {
                 return try await fetch(url, limit: limit, byteRange: byteRange)
             } catch {
-                guard Self.retriesSegmentFetch(after: error, attempt: attempt) else { throw error }
+                guard let pause = Self.segmentFetchRetryPause(after: error, attempt: attempt) else { throw error }
                 EngineLog.emit(
-                    "[HLSVODIngest] segment \(index): \(EngineLog.summary(of: error)) with no bytes; an origin producing on "
+                    "[HLSVODIngest] segment \(index): \(EngineLog.summary(of: error)); an origin producing on "
                     + "demand is asked again (\(attempt)/\(Self.segmentFetchAttempts))",
                     category: .engine)
                 attempt += 1
+                if pause > .zero { try await Task.sleep(for: pause) }
                 try Task.checkCancellation()
             }
         }
@@ -786,14 +787,23 @@ final class HLSVODIngestReader: TimeSeekableIOReader, @unchecked Sendable {
     /// ever produce, and a dead origin still fails the session rather than hanging it.
     static let segmentFetchAttempts = 8
 
-    /// Whether a failed segment fetch is asked again: only the transport's transient answers — the
-    /// request timed out with no bytes, or the connection was lost — and only while attempts remain.
-    /// An HTTP status, a body over the limit and a cancellation are never retried.
-    nonisolated static func retriesSegmentFetch(after error: Error, attempt: Int) -> Bool {
-        guard attempt < segmentFetchAttempts else { return false }
+    /// Whether a failed segment fetch is asked again, and after how long: the transport's transient answers —
+    /// the request timed out with no bytes, or the connection was lost — at once, since the wait has been paid;
+    /// a 404 or a 5xx after a second, because an origin producing on demand answers one of those for a
+    /// segment its transcoder has not reached while it seeks there (Plex, a few seconds, 2026-11-06). Only
+    /// while attempts remain. A 401 / 403, a body over the limit and a cancellation are never retried.
+    nonisolated static func segmentFetchRetryPause(after error: Error, attempt: Int) -> Duration? {
+        guard attempt < segmentFetchAttempts else { return nil }
+        if case HLSIngestError.playlistUnreachable(let status) = error {
+            return status == 404 || (500...599).contains(status) ? .seconds(1) : nil
+        }
         let nsError = error as NSError
-        guard nsError.domain == NSURLErrorDomain else { return false }
-        return nsError.code == NSURLErrorTimedOut || nsError.code == NSURLErrorNetworkConnectionLost
+        guard nsError.domain == NSURLErrorDomain else { return nil }
+        return nsError.code == NSURLErrorTimedOut || nsError.code == NSURLErrorNetworkConnectionLost ? .zero : nil
+    }
+
+    nonisolated static func retriesSegmentFetch(after error: Error, attempt: Int) -> Bool {
+        segmentFetchRetryPause(after: error, attempt: attempt) != nil
     }
 
     private func fetch(_ url: URL, limit: Int, role: SourceNetworkDiagnostics.Role = .hlsSegment,

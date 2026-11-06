@@ -140,7 +140,10 @@ final class Issue268HLSVODIngestTests: XCTestCase {
         XCTAssertTrue(HLSVODIngestReader.retriesSegmentFetch(after: timedOut, attempt: 1))
         XCTAssertTrue(HLSVODIngestReader.retriesSegmentFetch(after: lost, attempt: 3))
         XCTAssertFalse(HLSVODIngestReader.retriesSegmentFetch(after: timedOut, attempt: HLSVODIngestReader.segmentFetchAttempts))
-        XCTAssertFalse(HLSVODIngestReader.retriesSegmentFetch(after: refused, attempt: 1), "a status is the origin's answer")
+        XCTAssertEqual(HLSVODIngestReader.segmentFetchRetryPause(after: refused, attempt: 1), .seconds(1), "a 404 is a transcoder not there yet; asked again after a second")
+        XCTAssertEqual(HLSVODIngestReader.segmentFetchRetryPause(after: HLSIngestError.playlistUnreachable(status: 503), attempt: 1), .seconds(1))
+        XCTAssertNil(HLSVODIngestReader.segmentFetchRetryPause(after: HLSIngestError.playlistUnreachable(status: 403), attempt: 1), "a refusal is the origin's answer")
+        XCTAssertEqual(HLSVODIngestReader.segmentFetchRetryPause(after: timedOut, attempt: 1), .zero, "the wait was already paid")
         XCTAssertFalse(HLSVODIngestReader.retriesSegmentFetch(after: CancellationError(), attempt: 1))
     }
 

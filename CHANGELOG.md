@@ -10,6 +10,13 @@ the public-API contract.
 
 ## [Unreleased]
 
+### Fixed (Sprocket fork, after `7.54.0-sprocket.9`)
+
+- **A 404 or 5xx on a segment is asked again after a second.** An origin producing on demand answers one for a segment its
+  transcoder has not reached while it seeks there (Plex, a few seconds at a scrub target, 2026-11-06), and the ingest took
+  it as the origin's final word, which ended the session on every scrub to an unproduced position. Same eight attempts as
+  a timeout; a 401 / 403 is still final. `HLSVODIngestReader.segmentFetchRetryPause`.
+
 ### Fixed (Sprocket fork, after `7.54.0-sprocket.7`)
 
 - **The VOD ingest's carriage probe reads the segment it will read first, not segment 0.** A media server told to start
