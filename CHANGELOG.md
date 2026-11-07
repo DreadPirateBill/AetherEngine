@@ -10,6 +10,18 @@ the public-API contract.
 
 ## [Unreleased]
 
+### Changed (Sprocket fork, after `7.54.0-sprocket.10`)
+
+- **The declared iOS floor is 17.6, so a host whose iPad product stays on iPadOS 17 can link the engine.** Upstream's
+  7.0.0 raise to iOS 18 was for the renderer's layer-versus-renderer branch, which iOS 17 already satisfies; built
+  against 17.6 the engine's one iOS 18 dependency is `BlockingExecutor` (custom task executors are an iOS 18 runtime
+  feature), and it was already behind `#available(visionOS 2, *)` for visionOS 1 with a plain `Task.detached` as the
+  fallback. That check now names iOS 18 too, so on iOS 17 blocking work runs on the cooperative pool as it does on
+  visionOS 1 (the cost `BlockingWork`'s header describes). 17.6 rather than 17.0 because
+  `AVAudioSession.renderingModeChangeNotification` and `renderingCapabilitiesChangeNotification` need 17.2 and no
+  device that can run the host is below it. tvOS 18, macOS 15 and visionOS 1 are unchanged. `Package.swift`,
+  `BlockingWork.swift`.
+
 ### Fixed (Sprocket fork, after `7.54.0-sprocket.9`)
 
 - **A 404 or 5xx on a segment is asked again after a second.** An origin producing on demand answers one for a segment its

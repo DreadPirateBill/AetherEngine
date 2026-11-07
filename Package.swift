@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "AetherEngine",
     platforms: [
-        .iOS(.v18),
+        .iOS("17.6"),
         .tvOS(.v18),
         .macOS(.v15),
         .visionOS(.v1),
