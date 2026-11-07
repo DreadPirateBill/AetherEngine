@@ -44,7 +44,7 @@ let package = Package(
     traits: [
         .trait(
             name: "TrueHDObjectAudio",
-            description: "Link LibTrueHD and the object renderer, so objectAudioRendering can render TrueHD Atmos objects to APAC."
+            description: "Link LibTrueHD and the object renderer, so objectAudioRendering can render TrueHD Atmos objects to APAC (tvOS, macOS and visionOS; an iOS build leaves the library out)."
         ),
         .trait(
             name: "DTSXObjectAudio",
@@ -98,7 +98,10 @@ let package = Package(
             dependencies: [
                 .product(name: "AetherFFmpegBuild", package: "FFmpegBuild"),
                 .product(name: "Dovi", package: "LibDovi"),
-                .product(name: "TrueHD", package: "LibTrueHD", condition: .when(traits: ["TrueHDObjectAudio"])),
+                // Not on iOS (Sprocket fork): an iPhone or iPad has no signal path that carries TrueHD, so the library
+                // would decode for nothing there, and LibTrueHD declares iOS 18 (its archive is built for 18.0) where this
+                // fork's floor is 17.6. The sources gate the decoder on `TrueHDObjectAudio && !os(iOS)` to match.
+                .product(name: "TrueHD", package: "LibTrueHD", condition: .when(platforms: [.tvOS, .macOS, .visionOS], traits: ["TrueHDObjectAudio"])),
             ],
             // Silent E-AC-3 Atmos that `AtmosOutputActivator` loops beside an APAC track on tvOS, and the
             // privacy manifest for the required-reason APIs the engine calls (#920): systemUptime for

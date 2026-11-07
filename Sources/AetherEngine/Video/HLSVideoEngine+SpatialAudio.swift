@@ -298,7 +298,7 @@ extension HLSVideoEngine {
             let decoder: ObjectAudioDecoding
             switch source {
             case .trueHDAtmos:
-                #if TrueHDObjectAudio
+                #if TrueHDObjectAudio && !os(iOS)
                 decoder = try TrueHDObjectAudioDecoder()
                 #else
                 return nil

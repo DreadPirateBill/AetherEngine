@@ -10,6 +10,18 @@ the public-API contract.
 
 ## [Unreleased]
 
+### Changed (Sprocket fork, after `7.54.0-sprocket.11`)
+
+- **`TrueHDObjectAudio` links LibTrueHD on tvOS, macOS and visionOS only; an iOS build with the trait on leaves the library
+  out and reports the component not built in.** An iPhone or iPad has no signal path that carries TrueHD (no HDMI, and
+  AirPlay's latency rules it out), so the decoder would run for nothing there; and LibTrueHD declares iOS 18 with an archive
+  built for 18.0, which SwiftPM refuses below the host's floor whatever the engine declares. The product dependency carries
+  `.when(platforms: [.tvOS, .macOS, .visionOS], traits: ["TrueHDObjectAudio"])` and the decoder's gates read
+  `TrueHDObjectAudio && !os(iOS)`; `OptionalComponent.trueHDObjectAudio.isBuiltIn` is false on iOS, so every existing
+  not-built-in fallback (channel bridge, PCM decode, the session log line) applies. DTS:X is unchanged: its decoder is FFmpeg's
+  `dca`, already linked. `Package.swift`, `TrueHDObjectAudioDecoder.swift`, `AetherEngine+OptionalComponents.swift`,
+  `HLSVideoEngine+SpatialAudio.swift`, `SoftwarePlaybackHost+AudioProducer.swift`, four test files.
+
 ### Changed (Sprocket fork, after `7.54.0-sprocket.10`)
 
 - **The declared iOS floor is 17.6, so a host whose iPad product stays on iPadOS 17 can link the engine.** Upstream's

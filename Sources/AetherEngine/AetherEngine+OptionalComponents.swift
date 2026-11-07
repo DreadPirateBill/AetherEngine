@@ -7,7 +7,8 @@ extension AetherEngine {
     /// and the option that asks for it changes nothing, so a host reads `isBuiltIn` to hide a setting
     /// that would do nothing in its build.
     public enum OptionalComponent: String, CaseIterable, Sendable {
-        /// TrueHD Atmos object rendering for `LoadOptions.objectAudioRendering` (trait `TrueHDObjectAudio`).
+        /// TrueHD Atmos object rendering for `LoadOptions.objectAudioRendering` (trait `TrueHDObjectAudio`). Never
+        /// built in on iOS, trait or not: the library is a tvOS / macOS / visionOS dependency (Package.swift).
         case trueHDObjectAudio = "TrueHDObjectAudio"
         /// DTS:X height and object rendering for `LoadOptions.objectAudioRendering` (trait `DTSXObjectAudio`).
         case dtsxObjectAudio = "DTSXObjectAudio"
@@ -25,7 +26,7 @@ extension AetherEngine {
         public var isBuiltIn: Bool {
             switch self {
             case .trueHDObjectAudio:
-                #if TrueHDObjectAudio
+                #if TrueHDObjectAudio && !os(iOS)
                 return true
                 #else
                 return false

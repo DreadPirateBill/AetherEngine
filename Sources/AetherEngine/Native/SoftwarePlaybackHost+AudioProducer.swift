@@ -184,7 +184,7 @@ extension SoftwarePlaybackHost {
         do {
             switch source {
             case .trueHDAtmos:
-                #if TrueHDObjectAudio
+                #if TrueHDObjectAudio && !os(iOS)
                 decoder = try TrueHDObjectAudioDecoder()
                 #else
                 EngineLog.emit("[SWHost] audio: built without the TrueHDObjectAudio trait; PCM decode", category: .swPlayback)

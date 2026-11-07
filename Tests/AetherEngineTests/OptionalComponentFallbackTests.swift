@@ -17,7 +17,7 @@ struct OptionalComponentFallbackTests {
     func runtimeQueryMatchesTheBuild() {
         #expect(AetherEngine.OptionalComponent.allCases.map(\.traitName)
                 == ["TrueHDObjectAudio", "DTSXObjectAudio", "DualLayerDolbyVision", "DolbyVisionStillReshaping"])
-        #if TrueHDObjectAudio
+        #if TrueHDObjectAudio && !os(iOS)
         #expect(AetherEngine.OptionalComponent.trueHDObjectAudio.isBuiltIn)
         #else
         #expect(!AetherEngine.OptionalComponent.trueHDObjectAudio.isBuiltIn)
@@ -121,7 +121,7 @@ struct OptionalComponentFallbackTests {
     }
     #endif
 
-    #if !TrueHDObjectAudio
+    #if !(TrueHDObjectAudio && !os(iOS))
     @Test("objectAudioRendering keeps TrueHD Atmos on the channel bridge")
     func trueHDAtmosKeepsChannelBridge() {
         #expect(HLSVideoEngine.objectAudioSource(codecID: AV_CODEC_ID_TRUEHD, profile: AV_PROFILE_TRUEHD_ATMOS) == .trueHDAtmos)

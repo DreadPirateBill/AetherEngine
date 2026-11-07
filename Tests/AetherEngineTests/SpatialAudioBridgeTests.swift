@@ -145,7 +145,7 @@ struct SpatialAudioBridgeTests {
 
     #endif
 
-    #if TrueHDObjectAudio
+    #if TrueHDObjectAudio && !os(iOS)
     @Test("only TrueHD that FFmpeg marks Atmos, at 48 kHz or not yet known, is rendered")
     func eligibility() {
         let on = ObjectAudioRendering.apac(.l714)

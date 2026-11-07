@@ -1,5 +1,6 @@
-// Only with the TrueHDObjectAudio trait (off by default), which links LibTrueHD.
-#if TrueHDObjectAudio
+// Only with the TrueHDObjectAudio trait (off by default), which links LibTrueHD, and never on iOS: an iPhone or iPad has
+// no signal path that carries TrueHD, and the library declares iOS 18 (Package.swift, the product's platform condition).
+#if TrueHDObjectAudio && !os(iOS)
 import Foundation
 import TrueHD
 

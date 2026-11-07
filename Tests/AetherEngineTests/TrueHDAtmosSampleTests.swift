@@ -1,5 +1,5 @@
-// Only with the TrueHDObjectAudio trait (off by default): the decoder and its library are not built without it.
-#if TrueHDObjectAudio
+// Only with the TrueHDObjectAudio trait (off by default) and not on iOS: the decoder and its library are not built otherwise.
+#if TrueHDObjectAudio && !os(iOS)
 import Testing
 import Foundation
 import AetherLibavcodec
